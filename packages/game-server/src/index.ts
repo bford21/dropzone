@@ -8,11 +8,12 @@ import { canJoinPvp, canStartPvp, playersInVoiceRange, PVP_MINIMUM_PLAYERS, requ
 import { verifySessionEvidence } from "./admission";
 import { MatchAudit } from "./audit";
 import { AwardSigner } from "./award-signer";
+import { serverPort } from "./config";
 import { GameEngine } from "./engine";
 import { clientIp, configuredOrigins, isAllowedOrigin, TokenBucket } from "./security";
 import { createAuthChallenge, normalizeWallet, verifyWalletSignature } from "./wallet-auth";
 
-const PORT = Number(process.env.GAME_SERVER_PORT ?? 8081);
+const PORT = serverPort();
 const TICK_RATE = 30;
 const SNAPSHOT_RATE = 15;
 const VOICE_TOPOLOGY_RATE = 5;

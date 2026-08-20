@@ -3,6 +3,7 @@ import test from "node:test";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import { AwardSigner } from "../packages/game-server/src/award-signer";
+import { serverPort } from "../packages/game-server/src/config";
 import { clientIp, isAllowedOrigin, TokenBucket } from "../packages/game-server/src/security";
 import { recoverWalletFromPersonalSignature, verifyWalletSignature } from "../packages/game-server/src/wallet-auth";
 
@@ -56,6 +57,14 @@ test("forwarded addresses are trusted only behind an explicitly trusted proxy", 
   const headers = { "x-forwarded-for": "203.0.113.8, 10.0.0.2" };
   assert.equal(clientIp(headers, "127.0.0.1", false), "127.0.0.1");
   assert.equal(clientIp(headers, "127.0.0.1", true), "203.0.113.8");
+  assert.equal(clientIp({ ...headers, "x-real-ip": "198.51.100.7" }, "127.0.0.1", true), "198.51.100.7");
+});
+
+test("Railway PORT takes precedence over the local game server port", () => {
+  assert.equal(serverPort({ PORT: "9123", GAME_SERVER_PORT: "8081" }), 9123);
+  assert.equal(serverPort({ GAME_SERVER_PORT: "8081" }), 8081);
+  assert.equal(serverPort({}), 8081);
+  assert.throws(() => serverPort({ PORT: "not-a-port" }), /PORT must be an integer/);
 });
 
 test("production signer refuses the known development seed fallback", () => {

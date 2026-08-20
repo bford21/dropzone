@@ -110,12 +110,20 @@ Production environment variables:
 | `GAME_AUDIT_LOG_PATH` | Durable append-only NDJSON destination for match and reward events. |
 | `GAME_MAX_CONNECTIONS_PER_IP` | Optional connection ceiling; defaults to 6. |
 | `GAME_MAX_CONNECTIONS_PER_WALLET` | Optional verified-wallet ceiling; defaults to 2. |
-| `GAME_TRUST_PROXY` | Set to `true` only behind a proxy that overwrites `X-Forwarded-For`. |
+| `GAME_TRUST_PROXY` | Set to `true` only behind a trusted proxy that supplies `X-Real-IP` or overwrites `X-Forwarded-For`. |
 | `GAME_REWARDS_ENABLED` | Set to `false` to run production gameplay without issuing rewards. |
 | `NEXT_PUBLIC_VOICE_STUN_URL` | Optional STUN service URL used for WebRTC candidate discovery. |
 | `NEXT_PUBLIC_VOICE_TURN_URL` | TURN service URL required for reliable production voice across NAT/firewalls. |
 | `NEXT_PUBLIC_VOICE_TURN_USERNAME` | TURN username; production should prefer short-lived credentials. |
 | `NEXT_PUBLIC_VOICE_TURN_CREDENTIAL` | TURN credential paired with the username. |
+
+### Railway deployment boundary
+
+The non-reward public preview uses two services from the repository root: a Vinext web service configured by `/railway.web.json` and one authoritative WebSocket service configured by `/railway.game.json`. The browser must use the game service's public domain over `wss://`; the game process binds Railway's injected `PORT` on `0.0.0.0` and exposes `/health`. `GAME_ALLOWED_ORIGINS` must contain the exact public web origin.
+
+The authoritative service must remain at one replica while rooms, matchmaking, replay state, and award eligibility are process-local. Horizontal scaling requires explicit shared matchmaking/state and connection routing rather than independently cloning the current process.
+
+Railway terminates public TLS and supplies `X-Real-IP`. The deployment sets `GAME_TRUST_PROXY=true` so rate limits use the client address, but local or unknown proxy deployments keep it false. Initial deployment sets `GAME_REWARDS_ENABLED=false`; verified rewards additionally require the external evidence verifier, sealed signing material, and a Railway volume mounted at `/data` for `GAME_AUDIT_LOG_PATH=/data/matches.ndjson`.
 
 ## Repository layout
 

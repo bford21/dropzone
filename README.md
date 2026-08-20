@@ -21,6 +21,65 @@ npm run game:server
 
 Open the web URL printed by `npm run dev`. Choose an arena, loadout, and mode before deploying. Training creates a private room for you and 1–7 bots. Public PvP places real players in a shared lobby; a two-player minimum and strict ready majority starts the match. Voice is optional: opted-in players hear the whole lobby, then only living players within 18 game units during a match. The realtime server listens on `ws://localhost:8081`.
 
+## Deploy on Railway
+
+The first public deployment uses two persistent Railway services sourced from this repository. Keep both services at the repository root because the web and game processes share packages.
+
+### 1. Create the services
+
+Create an empty Railway project, then add `bford21/dropzone` twice and name the services exactly `web` and `game-server`.
+
+For `web`:
+
+- Root directory: `/`
+- Config file path: `/railway.web.json`
+- Generate an HTTP public domain.
+
+For `game-server`:
+
+- Root directory: `/`
+- Config file path: `/railway.game.json`
+- Generate an HTTP public domain; secure WebSockets use this same domain.
+- Keep exactly one replica. Lobby and match state are currently process-local.
+
+The checked-in configs select Railpack, production start commands, watch paths, restart policies, and the `/` and `/health` health checks. Both processes bind to Railway's injected `PORT` on `0.0.0.0`.
+
+### 2. Add variables
+
+Add this variable to `web` before its final build:
+
+```text
+NEXT_PUBLIC_GAME_SERVER_URL=wss://${{game-server.RAILWAY_PUBLIC_DOMAIN}}
+```
+
+Add these variables to `game-server`:
+
+```text
+GAME_ALLOWED_ORIGINS=https://${{web.RAILWAY_PUBLIC_DOMAIN}}
+GAME_TRUST_PROXY=true
+GAME_REWARDS_ENABLED=false
+GAME_MAX_CONNECTIONS_PER_IP=6
+GAME_MAX_CONNECTIONS_PER_WALLET=2
+```
+
+Railway terminates TLS and supplies the trusted `X-Real-IP` header used when `GAME_TRUST_PROXY=true`. Do not enable that setting behind an untrusted proxy. After the domains and variables exist, redeploy both services. The game health endpoint should report `"ok": true`, and the browser should connect to the game domain over `wss://`.
+
+`NEXT_PUBLIC_*` values are embedded during the web build, so changing them requires a web redeploy. For reliable production voice, also configure the STUN/TURN variables documented below; a managed TURN provider is recommended.
+
+### 3. Enable verified rewards later
+
+The initial Railway deployment deliberately uses `GAME_REWARDS_ENABLED=false`. Before enabling rewards, deploy the trusted session-evidence verifier described in the technical specification, attach a Railway volume to `game-server` at `/data`, and set:
+
+```text
+GAME_REWARDS_ENABLED=true
+GAME_AWARD_PRIVATE_KEY=<sealed 32-byte hex seed>
+GAME_SESSION_EVIDENCE_URL=https://<trusted-verifier-domain>
+GAME_SESSION_EVIDENCE_TOKEN=<sealed verifier credential>
+GAME_AUDIT_LOG_PATH=/data/matches.ndjson
+```
+
+Never commit those values. Seal the signing seed and verifier credential in Railway.
+
 ## Controls
 
 - WASD — move

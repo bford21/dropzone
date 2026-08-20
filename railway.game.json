@@ -1,0 +1,22 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "RAILPACK",
+    "buildCommand": "npm run typecheck",
+    "watchPatterns": [
+      "/packages/game-server/**",
+      "/packages/shared/**",
+      "/package.json",
+      "/package-lock.json",
+      "/tsconfig.json",
+      "/railway.game.json"
+    ]
+  },
+  "deploy": {
+    "startCommand": "NODE_ENV=production npm run game:server",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 120,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}

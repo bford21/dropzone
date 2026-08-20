@@ -22,9 +22,11 @@ export class TokenBucket {
 }
 
 export function clientIp(headers: Record<string, string | string[] | undefined>, remoteAddress?: string, trustProxy = process.env.GAME_TRUST_PROXY === "true"): string {
+  const realIp = headers["x-real-ip"];
   const forwarded = headers["x-forwarded-for"];
-  const first = Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(",")[0];
-  return (trustProxy ? first?.trim() : undefined) || remoteAddress || "unknown";
+  const trustedRealIp = (Array.isArray(realIp) ? realIp[0] : realIp)?.trim();
+  const trustedForwardedIp = (Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(",")[0])?.trim();
+  return (trustProxy ? trustedRealIp || trustedForwardedIp : undefined) || remoteAddress || "unknown";
 }
 
 export function configuredOrigins(value = process.env.GAME_ALLOWED_ORIGINS): Set<string> {
