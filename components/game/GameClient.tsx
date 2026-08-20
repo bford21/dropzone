@@ -736,13 +736,31 @@ export function GameClient() {
       lamps.instanceMatrix.needsUpdate = true; lampHeads.instanceMatrix.needsUpdate = true; scene.add(lamps, lampHeads);
       const bellRoof = new THREE.Mesh(new THREE.ConeGeometry(3.25, 2.2, 4), new THREE.MeshStandardMaterial({ color: 0x6f342b, roughness: .88 })); bellRoof.position.set(0, 9.5, 0); bellRoof.rotation.y = Math.PI / 4; bellRoof.castShadow = true; scene.add(bellRoof);
       const moon = new THREE.Mesh(new THREE.SphereGeometry(3.8, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffefc8, fog: false })); moon.position.set(-34, 34, -68); scene.add(moon);
-      const clothesLines = instancedBoxes([
-        { x: -25, y: 4.1, z: 3, width: .035, height: .035, depth: 11 }, { x: 25, y: 4.4, z: -3, width: .035, height: .035, depth: 11 },
-        { x: -3, y: 4.2, z: 25, width: 11, height: .035, depth: .035 }, { x: 3, y: 4.5, z: -25, width: 11, height: .035, depth: .035 },
-      ], darkMaterial); scene.add(clothesLines);
+      // Stretch laundry only between facing buildings so neither the wire nor
+      // the fabric reads as an unsupported object floating over the street.
+      const clothesLineSpans = [
+        { x: -20, y: 3.85, z: -7.75, width: .035, depth: 9.5, axis: "z" as const },
+        { x: 20, y: 3.85, z: 7.75, width: .035, depth: 9.5, axis: "z" as const },
+        { x: -10, y: 3.85, z: 20, width: 14, depth: .035, axis: "x" as const },
+        { x: 8.75, y: 3.85, z: -20, width: 11.5, depth: .035, axis: "x" as const },
+      ];
+      const clothesLines = instancedBoxes(clothesLineSpans.map((span) => ({ x: span.x, y: span.y, z: span.z, width: span.width, height: .035, depth: span.depth })), darkMaterial); scene.add(clothesLines);
       const laundryParts: VisualBox[] = [];
-      for (let index = 0; index < 12; index += 1) laundryParts.push({ x: -25, y: 3.75 - index % 2 * .12, z: -1.5 + index * .82, width: .06, height: .48 + index % 3 * .1, depth: .55 });
-      for (let index = 0; index < 12; index += 1) laundryParts.push({ x: -1.5 + index * .82, y: 3.82 - index % 2 * .12, z: 25, width: .55, height: .48 + index % 3 * .1, depth: .06 });
+      for (const [spanIndex, span] of clothesLineSpans.entries()) {
+        const lineLength = span.axis === "x" ? span.width : span.depth;
+        for (let index = 0; index < 7; index += 1) {
+          const offset = (index - 3) * lineLength * .105;
+          const height = .5 + (index + spanIndex) % 3 * .1;
+          laundryParts.push({
+            x: span.x + (span.axis === "x" ? offset : 0),
+            y: span.y - height / 2,
+            z: span.z + (span.axis === "z" ? offset : 0),
+            width: span.axis === "x" ? .58 : .06,
+            height,
+            depth: span.axis === "z" ? .58 : .06,
+          });
+        }
+      }
       const laundryMaterial = new THREE.MeshStandardMaterial({ color: 0xd86558, roughness: .95, side: THREE.DoubleSide }); scene.add(instancedBoxes(laundryParts, laundryMaterial));
       const potPositions = [[-26, -13], [-24, 13], [26, 13], [24, -13], [-9, 27], [9, -27], [-35, 9], [35, -9]] as const;
       const pots = new THREE.InstancedMesh(new THREE.CylinderGeometry(.3, .22, .42, 8), new THREE.MeshStandardMaterial({ color: 0xa45e3e, roughness: .88 }), potPositions.length);
